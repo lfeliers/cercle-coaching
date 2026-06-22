@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Mode = "login" | "register";
 
@@ -12,6 +13,7 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,12 +36,21 @@ export default function AuthPage() {
     if (!res.ok) {
       setError(data.error);
     } else {
-      setSuccess(data.message);
       if (mode === "register") {
-        setMode("login");
-        setName("");
-        setEmail("");
-        setPassword("");
+        const loginRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        if (loginRes.ok) {
+          router.push("/home");
+        } else {
+          setSuccess("Compte créé ! Connecte-toi pour continuer.");
+          setMode("login");
+          setName("");
+        }
+      } else {
+        router.push("/home");
       }
     }
   }
