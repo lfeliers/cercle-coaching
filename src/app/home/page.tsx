@@ -206,6 +206,13 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Branding bas de sidebar */}
+        <div className="px-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <p className="text-xs font-black text-center" style={{ color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>
+            Cercle Performance
+          </p>
+        </div>
       </aside>
 
       {/* Contenu principal */}
