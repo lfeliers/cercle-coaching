@@ -3,10 +3,23 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+type NolioStatus = { connected: boolean; nolioUserId: number | null; connectedAt: string | null };
+type User = { id: string; name: string; email: string; nolio: NolioStatus };
+
 export default function HomePage() {
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return router.push("/");
+        setUser(data);
+      });
+  }, [router]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -17,6 +30,18 @@ export default function HomePage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/");
+  }
+
+  const initials = user?.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) ?? "…";
 
   return (
     <div
@@ -60,7 +85,7 @@ export default function HomePage() {
               }}
               aria-label="Ouvrir le profil"
             >
-              CC
+              {initials}
             </button>
 
             {/* Popover */}
@@ -68,7 +93,7 @@ export default function HomePage() {
               <div
                 className="absolute top-12 left-0 w-64 p-4"
                 style={{
-                  background: "rgba(20, 20, 60, 0.85)",
+                  background: "rgba(20, 20, 60, 0.9)",
                   backdropFilter: "blur(20px)",
                   WebkitBackdropFilter: "blur(20px)",
                   border: "1px solid rgba(255,255,255,0.12)",
@@ -76,10 +101,7 @@ export default function HomePage() {
                   boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
                 }}
               >
-                <p
-                  className="text-xs text-center"
-                  style={{ color: "rgba(255,255,255,0.3)" }}
-                >
+                <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.3)" }}>
                   Bientôt disponible…
                 </p>
               </div>
@@ -93,7 +115,7 @@ export default function HomePage() {
 
         {/* Droite : bouton déconnexion */}
         <button
-          onClick={() => router.push("/")}
+          onClick={handleLogout}
           className="px-4 py-2 text-sm font-bold transition-all duration-200"
           style={{
             background: "rgba(255,255,255,0.07)",
@@ -103,19 +125,76 @@ export default function HomePage() {
             cursor: "pointer",
           }}
           onMouseEnter={(e) => {
-            (e.target as HTMLButtonElement).style.background = "rgba(239,68,68,0.2)";
-            (e.target as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.4)";
-            (e.target as HTMLButtonElement).style.color = "#fca5a5";
+            const t = e.currentTarget;
+            t.style.background = "rgba(239,68,68,0.2)";
+            t.style.borderColor = "rgba(239,68,68,0.4)";
+            t.style.color = "#fca5a5";
           }}
           onMouseLeave={(e) => {
-            (e.target as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
-            (e.target as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)";
-            (e.target as HTMLButtonElement).style.color = "rgba(255,255,255,0.7)";
+            const t = e.currentTarget;
+            t.style.background = "rgba(255,255,255,0.07)";
+            t.style.borderColor = "rgba(255,255,255,0.15)";
+            t.style.color = "rgba(255,255,255,0.7)";
           }}
         >
           Déconnexion
         </button>
       </nav>
+
+      {/* Bannière Nolio */}
+      {user && !user.nolio.connected && (
+        <div className="relative z-10 mx-6 mt-5">
+          <div
+            className="flex items-center justify-between gap-4 px-5 py-4"
+            style={{
+              background: "rgba(255,255,255,0.07)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.13)",
+              borderRadius: "18px",
+              boxShadow: "0 4px 30px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              {/* Icône Nolio */}
+              <div
+                className="flex items-center justify-center w-9 h-9 shrink-0"
+                style={{
+                  background: "linear-gradient(135deg, #ff6b35, #ff9500)",
+                  borderRadius: "10px",
+                  boxShadow: "0 2px 12px rgba(255,107,53,0.4)",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">
+                  Connecte ton compte Nolio
+                </p>
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  Synchronise tes séances et planifications avec Nolio.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="/api/auth/nolio/connect"
+              className="shrink-0 px-4 py-2 text-sm font-bold text-white transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #ff6b35, #ff9500)",
+                borderRadius: "12px",
+                textDecoration: "none",
+                boxShadow: "0 3px 14px rgba(255,107,53,0.4)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Connecter Nolio
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
