@@ -57,7 +57,7 @@ export async function nolioFetch(
     headers: { ...options.headers, Authorization: `Bearer ${token}` },
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     const refreshed = await refreshNolioTokens(userId, refreshToken);
     if (!refreshed) return null; // refresh échoué
 
