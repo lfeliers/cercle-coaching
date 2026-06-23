@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 
 const SPORTS = ["NAT", "VELO", "CAP", "PP - SC", "DIV"] as const;
 const SPORT_OFFSETS = [3, 4, 5, 6, 7];
-const DAY_START_COL = 6;
+const DAY_START_COL = 7; // colonne H — décalé d'un cran par la nouvelle colonne "nom athlète"
 const DAY_COUNT = 7;
 
 function fmtTime(val: unknown): string | null {
@@ -42,11 +42,12 @@ export async function POST(req: NextRequest) {
 
   while (i < rows.length) {
     const row = rows[i];
-    const athleteId = row?.[0];
+    const athleteName = row?.[0];
+    const athleteId = row?.[1];
 
     if (typeof athleteId !== "number") { i++; continue; }
 
-    const weekRaw = rows[i + 1]?.[1];
+    const weekRaw = rows[i + 1]?.[2];
     const week = typeof weekRaw === "number" ? Math.round(weekRaw) : null;
     const dates = Array.from({ length: DAY_COUNT }, (_, d) =>
       fmtDate(row[DAY_START_COL + d * 4])
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    results.push({ athlete_id: Math.round(athleteId), week, sessions });
+    results.push({ athlete_id: Math.round(athleteId), athlete_name: athleteName ? String(athleteName).trim() : null, week, sessions });
     i += 8;
   }
 
