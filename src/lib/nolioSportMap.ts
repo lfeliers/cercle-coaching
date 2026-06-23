@@ -3,8 +3,9 @@ export const SPORT_MAP: Record<string, number> = {
   "VELO": 14,    // Road cycling
   "CAP": 2,      // Running
   "PP - SC": 20, // Strength
-  "DIV": 12,     // Other
 };
+
+const IGNORED_SPORTS = new Set(["DIV"]);
 
 export type NolioPlannedTraining = {
   id_partner: string;
@@ -32,7 +33,7 @@ export function toNolioTrainings(athletes: {
 
   for (const athlete of athletes) {
     for (const s of athlete.sessions) {
-      if (!s.date) continue;
+      if (!s.date || IGNORED_SPORTS.has(s.sport)) continue;
       result.push({
         id_partner: `${athlete.athlete_id}-${s.date}-${s.sport}`,
         sport_id: SPORT_MAP[s.sport] ?? 12,
