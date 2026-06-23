@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 type Session = {
   date: string | null;
@@ -13,8 +13,15 @@ type Session = {
 
 type AthleteBlock = {
   athlete_id: number;
+  athlete_name: string | null;
   week: number | null;
   sessions: Session[];
+};
+
+type NolioAthlete = {
+  nolio_id: number;
+  name: string;
+  teams: { id: number; name: string }[];
 };
 
 type ImportedFile = { name: string; size: number; file: File };
@@ -31,7 +38,25 @@ export default function ImportSeancesPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AthleteBlock[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [athletes, setAthletes] = useState<NolioAthlete[] | null>(null);
+  const [athletesOpen, setAthletesOpen] = useState(false);
+  const [athletesError, setAthletesError] = useState<string | null>(null);
+  const [athletesLoading, setAthletesLoading] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setAthletesLoading(true);
+    fetch("/api/nolio/athletes")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setAthletesError(data.error);
+        else setAthletes(data);
+      })
+      .catch(() => setAthletesError("Impossible de contacter Nolio."))
+      .finally(() => setAthletesLoading(false));
+  }, []);
 
   function handleFile(f: File) {
     setImportedFile({ name: f.name, size: f.size, file: f });
@@ -59,11 +84,8 @@ export default function ImportSeancesPage() {
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) {
-      setError(data.error ?? "Erreur lors de l'extraction.");
-    } else {
-      setResult(data);
-    }
+    if (!res.ok) setError(data.error ?? "Erreur lors de l'extraction.");
+    else setResult(data);
   }
 
   return (
@@ -85,7 +107,7 @@ export default function ImportSeancesPage() {
           onDrop={onDrop}
           className="flex flex-col items-center justify-center gap-5 cursor-pointer"
           style={{
-            minHeight: "320px",
+            minHeight: "280px",
             background: dragging ? "rgba(41,121,255,0.12)" : "rgba(255,255,255,0.05)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
@@ -151,7 +173,6 @@ export default function ImportSeancesPage() {
               </svg>
             </div>
           </div>
-
           <button
             onClick={() => { setImportedFile(null); setResult(null); setError(null); if (inputRef.current) inputRef.current.value = ""; }}
             className="text-xs self-start transition-all duration-150"
@@ -164,7 +185,111 @@ export default function ImportSeancesPage() {
         </div>
       )}
 
-      {/* Erreur */}
+      {/* Menu déroulant athlètes Nolio */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "18px",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => setAthletesOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 transition-all duration-150"
+          style={{ background: "transparent", border: "none", cursor: "pointer" }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-8 h-8 shrink-0"
+              style={{ background: "rgba(41,121,255,0.2)", borderRadius: "10px" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#64b5f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span className="text-sm font-bold text-white">
+              Athlètes Nolio
+              {athletes && (
+                <span className="ml-2 text-xs font-normal" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  {athletes.length} athlète{athletes.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </span>
+          </div>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            style={{ transform: athletesOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", color: "rgba(255,255,255,0.4)" }}
+          >
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {athletesOpen && (
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            {athletesLoading && (
+              <p className="text-sm px-5 py-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Chargement…
+              </p>
+            )}
+            {athletesError && (
+              <p className="text-sm px-5 py-4" style={{ color: "#fca5a5" }}>
+                {athletesError}
+              </p>
+            )}
+            {athletes && athletes.length === 0 && (
+              <p className="text-sm px-5 py-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Aucun athlète trouvé.
+              </p>
+            )}
+            {athletes && athletes.map((athlete, idx) => (
+              <div
+                key={athlete.nolio_id}
+                className="flex items-center justify-between px-5 py-3"
+                style={{
+                  borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.05)" : undefined,
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex items-center justify-center w-8 h-8 shrink-0 text-xs font-black"
+                    style={{
+                      background: "rgba(41,121,255,0.15)",
+                      borderRadius: "50%",
+                      color: "#64b5f6",
+                    }}
+                  >
+                    {athlete.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">{athlete.name}</p>
+                    {athlete.teams.length > 0 && (
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {athlete.teams.map((t) => t.name).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <span
+                  className="text-xs font-bold px-2 py-1"
+                  style={{
+                    background: "rgba(41,121,255,0.15)",
+                    border: "1px solid rgba(41,121,255,0.25)",
+                    borderRadius: "8px",
+                    color: "#64b5f6",
+                  }}
+                >
+                  ID {athlete.nolio_id}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Erreur import */}
       {error && (
         <div className="px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "12px", color: "#fca5a5" }}>
           {error}
@@ -174,12 +299,10 @@ export default function ImportSeancesPage() {
       {/* Résultat JSON */}
       {result && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-white">
-              {result.length} athlète{result.length > 1 ? "s" : ""} extraits —{" "}
-              {result.reduce((acc, a) => acc + a.sessions.length, 0)} séances
-            </p>
-          </div>
+          <p className="text-sm font-bold text-white">
+            {result.length} athlète{result.length > 1 ? "s" : ""} extraits —{" "}
+            {result.reduce((acc, a) => acc + a.sessions.length, 0)} séances
+          </p>
           <pre
             className="text-xs overflow-auto"
             style={{
