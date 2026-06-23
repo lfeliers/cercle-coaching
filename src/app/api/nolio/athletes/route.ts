@@ -30,7 +30,11 @@ export async function GET() {
   if (!res) return NextResponse.json({ error: "Session Nolio expirée, reconnecte ton compte." }, { status: 401 });
   if (!res.ok) {
     const text = await res.text();
-    return NextResponse.json({ error: `Erreur Nolio : ${text}` }, { status: res.status });
+    console.error("[nolio/athletes] Nolio error", res.status, res.statusText, text);
+    return NextResponse.json({
+      error: `Erreur Nolio : ${text}`,
+      debug: { status: res.status, statusText: res.statusText, body: text },
+    }, { status: res.status });
   }
 
   return NextResponse.json(await res.json());
