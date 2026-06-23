@@ -12,9 +12,9 @@ export type NolioPlannedTraining = {
   sport_id: number;
   name: string;
   date_start: string;
-  duration: number | null;
-  rpe: number | null;
-  distance: number | null;
+  duration?: number;
+  rpe?: number;
+  distance?: number;
   athlete_id: number;
 };
 
@@ -43,9 +43,9 @@ export function toNolioTrainings(athletes: {
         sport_id,
         name: s.name,
         date_start: s.date,
-        duration: s.duration ? durationToSeconds(s.duration) : null,
-        rpe: s.rpe,
-        distance: s.distance_km,
+        ...(s.duration ? { duration: durationToSeconds(s.duration) } : {}),
+        ...(s.rpe != null ? { rpe: s.rpe } : {}),
+        ...(s.distance_km != null ? { distance: Math.round(s.distance_km) } : {}),
         athlete_id: athlete.athlete_id,
       });
     }
