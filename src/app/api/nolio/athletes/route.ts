@@ -7,7 +7,18 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
 
   const nolio = await getNolioUser(session.userId);
-  if (!nolio) return NextResponse.json({ error: "Compte Nolio non connecté." }, { status: 403 });
+  if (!nolio) {
+    // Debug: inspecte le document user pour comprendre pourquoi getNolioUser retourne null
+    const { default: clientPromise } = await import("@/lib/mongodb");
+    const { ObjectId } = await import("mongodb");
+    const client = await clientPromise;
+    const user = await client.db("main").collection("users").findOne({ _id: new ObjectId(session.userId) });
+    console.error("[nolio/athletes] getNolioUser null. user.nolio =", JSON.stringify(user?.nolio ?? null));
+    return NextResponse.json({
+      error: "Compte Nolio non connecté.",
+      debug: { nolio: user?.nolio ?? null },
+    }, { status: 403 });
+  }
 
   const res = await nolioFetch(
     session.userId,
